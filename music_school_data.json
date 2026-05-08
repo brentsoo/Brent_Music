@@ -1,0 +1,16 @@
+{
+    "YYZ": {
+        "name": "Yap Yi Zhe",
+        "instrument": "钢琴",
+        "grade": "4",
+        "history": [
+            {
+                "date": "2026-05-09",
+                "status": "Attended",
+                "remarks": "aaa",
+                "replaced": false
+            }
+        ],
+        "replacement_credits": 0
+    }
+}
