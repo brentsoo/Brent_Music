@@ -146,7 +146,7 @@ def call_gemini(prompt: str) -> str:
 
         print("你的 API Key 支持以下模型：")
         for model in models.get("models", []):
-        print(model["name"])
+            print(model["name"])
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
