@@ -135,46 +135,29 @@ def submit_pending(action, data):
 # ─────────────────────────────────────────────
 def call_gemini(prompt: str) -> str:
     try:
-        # 1. 获取 Secrets
         api_key = st.secrets["gemini"]["api_key"]
         
-        # 2. 关键修复：URL 必须指向具体的模型，并且以 :generateContent 结尾
-        model_name = "gemini-1.5-flash"
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
+        # 尝试使用 gemini-pro，这是最不容易报错的名字
+        model_name = "gemini-pro" 
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
-        # 3. 设置 Headers 和 Payload
         headers = {"Content-Type": "application/json"}
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }]
-        }
+        payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
-        # 4. 发送 POST 请求
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
         
-        # 检查是否请求成功
-        if resp.status_code != 200:
-            return f"API 请求失败，状态码：{resp.status_code}。错误详情：{resp.text}"
-            
+        # 如果 gemini-pro 还是报 404，尝试换成 v1 路径
+        if resp.status_code == 404:
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}"
+            resp = requests.post(url, headers=headers, json=payload, timeout=30)
+
         data = resp.json()
-
-        # 5. 错误与安全拦截
         if "error" in data:
-            return f"Gemini 错误：{data['error'].get('message', str(data['error']))}"
+            return f"AI暂时不可用: {data['error'].get('message')}"
         
-        if "candidates" not in data or not data["candidates"]:
-            return "AI 未能生成内容，请检查 Prompt 或 API 状态。"
-
-        candidate = data["candidates"][0]
-        if candidate.get("finishReason") == "SAFETY":
-            return "⚠️ AI 内容被安全过滤，请尝试修改描述词。"
-
-        # 6. 返回生成的报告内容
-        return candidate["content"]["parts"][0]["text"]
-
+        return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        return f"AI 请求过程中发生异常：{e}"
+        return f"连接AI失败: {e}"
 
 def build_prompt(sid, info, lang):
     h         = info["history"]
