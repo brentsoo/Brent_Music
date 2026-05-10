@@ -139,7 +139,14 @@ def call_gemini(prompt: str) -> str:
         # 使用 1.5 Flash 模型
         # 将 v1beta 改为 v1
         # 最稳定的通用版本，100% 能跑通
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+
+response = requests.get(url)
+models = response.json()
+
+print("你的 API Key 支持以下模型：")
+for model in models.get("models", []):
+    print(model["name"])
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
