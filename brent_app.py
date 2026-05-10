@@ -137,12 +137,12 @@ def call_gemini(prompt: str) -> str:
     try:
         api_key = st.secrets["gemini"]["api_key"]
         
-        # 1. 更新为 2026 年通用的模型名
-        model_name = "gemini-1.5-flash" 
-        
-        # 2. 使用 v1 稳定版路径，并加上 :generateContent 指令
-        url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={api_key}"
+        # 尝试锁定具体版本号
+        model_name = "gemini-1.5-flash-001" 
+        # 或者 2026 年的新版
+        # model_name = "gemini-1.5-flash-latest"
 
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         headers = {"Content-Type": "application/json"}
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
