@@ -142,7 +142,18 @@ def call_gemini(prompt: str) -> str:
         }
         resp = requests.post(url, json=payload, timeout=30)
         data = resp.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+        # 显示完整错误信息帮助调试
+        if "error" in data:
+            return f"Gemini 错误：{data['error'].get('message', str(data['error']))}"
+        if "candidates" not in data:
+            return f"Gemini 返回异常：{json.dumps(data)}"
+
+        candidate = data["candidates"][0]
+        if candidate.get("finishReason") == "SAFETY":
+            return "AI 内容被安全过滤，请修改提示词。"
+
+        return candidate["content"]["parts"][0]["text"]
     except Exception as e:
         return f"AI 请求失败：{e}"
 
