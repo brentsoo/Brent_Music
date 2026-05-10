@@ -131,38 +131,34 @@ def submit_pending(action, data):
     save_pending(lst)
 
 # ─────────────────────────────────────────────
-# 5. AI HELPER
+# 5. GEMINI AI HELPER
 # ─────────────────────────────────────────────
-def call_claude(prompt: str) -> str:
+def call_gemini(prompt: str) -> str:
     try:
-        resp = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={"Content-Type": "application/json"},
-            json={
-                "model":      "claude-sonnet-4-20250514",
-                "max_tokens": 1000,
-                "messages":   [{"role":"user","content": prompt}],
-            },
-            timeout=30,
-        )
+        api_key = st.secrets["gemini"]["api_key"]
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        resp = requests.post(url, json=payload, timeout=30)
         data = resp.json()
-        return "\n".join(b["text"] for b in data.get("content",[]) if b.get("type")=="text")
+        return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         return f"AI 请求失败：{e}"
 
 def build_prompt(sid, info, lang):
-    h = info["history"]
+    h         = info["history"]
     total     = len(h)
-    attended  = sum(1 for x in h if x.get("status")=="Attended")
+    attended  = sum(1 for x in h if x.get("status") == "Attended")
     cancelled = sum(1 for x in h if "Cancelled" in x.get("status",""))
-    temp      = sum(1 for x in h if x.get("status")=="Temporary Stop")
+    temp      = sum(1 for x in h if x.get("status") == "Temporary Stop")
     replaced  = sum(1 for x in h if "Replace" in x.get("status",""))
     rate      = f"{attended/total*100:.1f}%" if total else "N/A"
     recent    = "\n".join(
         f"- {x.get('date','')}: {x.get('remarks','')}"
         for x in h[-5:]
         if x.get('remarks') and 'N/A' not in str(x.get('remarks',''))
-    ) or ("No remarks." if lang=="English" else "暂无备注。")
+    ) or ("No remarks." if lang == "English" else "暂无备注。")
 
     if lang == "English":
         return f"""You are a professional music teacher assistant. Write a concise student progress report in English.
@@ -302,7 +298,7 @@ elif menu == "补课安排":
                         students_db[sid]["replacement_credits"] -= 1
                     students_db[sid]["history"].append({
                         "date": str(rep_date),
-                        "status": rep_type.replace(" ","") + "d",
+                        "status": "Fully Replaced" if rep_type == "Fully Replace" else "Part Replaced",
                         "remarks": rep_remarks, "replaced": True,
                     })
                     save_data(students_db)
@@ -350,7 +346,7 @@ elif menu == "报告查询":
         lang = st.radio("报告语言", ["English","中文"], horizontal=True)
         if st.button("✨ 生成 AI 分析"):
             with st.spinner("AI 分析中..."):
-                result = call_claude(build_prompt(sid, info, lang))
+                result = call_gemini(build_prompt(sid, info, lang))
             st.info(result)
 
 # ─────────────────────────────────────────────
@@ -435,7 +431,6 @@ elif menu == "申请修改学生信息":
 elif menu == "报表中心":
     st.title("📋 报表中心")
 
-    # Pending replacements summary
     st.subheader("⏳ 全部待补课汇总")
     rows = [{"学生ID":s,"姓名":i['name'],"乐器":i['instrument'],"待补课次数":i['replacement_credits']}
             for s, i in students_db.items() if i['replacement_credits'] > 0]
@@ -448,7 +443,6 @@ elif menu == "报表中心":
 
     st.divider()
 
-    # AI report export
     st.subheader("🤖 AI 学生报告导出")
     report_mode = st.radio("生成对象", ["单个学生","全部学生"], horizontal=True)
     lang        = st.radio("报告语言", ["English","中文"], horizontal=True, key="rl")
@@ -458,16 +452,19 @@ elif menu == "报表中心":
                            format_func=lambda x: f"{students_db[x]['name']} ({x})")
         if st.button("✨ 生成报告"):
             with st.spinner("AI 生成中..."):
-                report = call_claude(build_prompt(sid, students_db[sid], lang))
+                report = call_gemini(build_prompt(sid, students_db[sid], lang))
             st.session_state['report']      = report
             st.session_state['report_name'] = students_db[sid]['name']
     else:
         if st.button("✨ 生成全部学生报告"):
             with st.spinner("AI 生成中（可能需要较长时间）..."):
                 parts = []
-                for sid, info in students_db.items():
-                    r = call_claude(build_prompt(sid, info, lang))
+                progress = st.progress(0)
+                total_students = len(students_db)
+                for idx, (sid, info) in enumerate(students_db.items()):
+                    r = call_gemini(build_prompt(sid, info, lang))
                     parts.append(f"{'='*50}\n{info['name']} ({sid})\n{'='*50}\n{r}\n")
+                    progress.progress((idx + 1) / total_students)
                 report = "\n".join(parts)
             st.session_state['report']      = report
             st.session_state['report_name'] = "All_Students"
@@ -502,7 +499,6 @@ elif menu == "报表中心":
 elif menu == "课程日历":
     st.title("📅 课程日历")
 
-    # Weekly grid
     weekly = {i: [] for i in range(7)}
     for sid, info in students_db.items():
         for slot in info.get('schedule', []):
@@ -530,7 +526,6 @@ elif menu == "课程日历":
 
     st.divider()
 
-    # One-off lesson
     st.subheader("➕ 添加单次临时课程")
     with st.form("oneoff"):
         c1, c2, c3 = st.columns(3)
@@ -553,7 +548,6 @@ elif menu == "课程日历":
 
     st.divider()
 
-    # Google Calendar links
     st.subheader("🔗 导出到 Google Calendar")
     today = date.today()
 
@@ -567,16 +561,16 @@ elif menu == "课程日历":
         if info.get('schedule'):
             with st.expander(f"📅 {info['name']} ({info['instrument']})"):
                 for slot in info['schedule']:
-                    d_idx   = DAY_MAP.get(slot['day'], 0)
-                    ld      = next_weekday(d_idx)
-                    tp      = slot['time'].split(":")
-                    h, m    = int(tp[0]), int(tp[1])
-                    start   = ld.strftime("%Y%m%d") + f"T{h:02d}{m:02d}00"
-                    end     = ld.strftime("%Y%m%d") + f"T{(h+1)%24:02d}{m:02d}00"
-                    title   = f"{info['name']}+–+{info['instrument']}+Lesson"
-                    url     = (f"https://calendar.google.com/calendar/render?action=TEMPLATE"
-                               f"&text={title}&dates={start}/{end}"
-                               f"&recur=RRULE:FREQ%3DWEEKLY&details=Brent+Music+Lesson")
+                    d_idx = DAY_MAP.get(slot['day'], 0)
+                    ld    = next_weekday(d_idx)
+                    tp    = slot['time'].split(":")
+                    h, m  = int(tp[0]), int(tp[1])
+                    start = ld.strftime("%Y%m%d") + f"T{h:02d}{m:02d}00"
+                    end   = ld.strftime("%Y%m%d") + f"T{(h+1)%24:02d}{m:02d}00"
+                    title = f"{info['name']}+–+{info['instrument']}+Lesson"
+                    url   = (f"https://calendar.google.com/calendar/render?action=TEMPLATE"
+                             f"&text={title}&dates={start}/{end}"
+                             f"&recur=RRULE:FREQ%3DWEEKLY&details=Brent+Music+Lesson")
                     st.markdown(f"[📆 {slot['day']} {slot['time'][:5]} → 添加到 Google Calendar]({url})")
 
 # ─────────────────────────────────────────────
