@@ -470,7 +470,23 @@ elif menu == "报告查询":
         if st.button("✨ 生成 AI 分析"):
             with st.spinner("AI 分析中..."):
                 result = call_gemini(build_prompt(sid, info, lang))
+            st.session_state[f'ai_result_{sid}'] = result
+
+        if f'ai_result_{sid}' in st.session_state:
+            result = st.session_state[f'ai_result_{sid}']
             st.info(result)
+
+            # WhatsApp button
+            phone = info.get('phone', '').strip().replace(' ', '').replace('-', '')
+            if phone:
+                # Format Malaysian number
+                if phone.startswith('0'):
+                    phone = '6' + phone
+                msg = f"Hi, here is today's lesson report for {info['name']}:%0A%0A{result.replace(chr(10), '%0A')}"
+                wa_url = f"https://wa.me/{phone}?text={msg}"
+                st.markdown(f"[📲 发送给家长 (WhatsApp)]({wa_url})", unsafe_allow_html=True)
+            else:
+                st.caption("⚠️ 该学生未填写联络号码，无法发送 WhatsApp")
 
 # ─────────────────────────────────────────────
 # E. 管理学生信息
