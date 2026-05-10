@@ -137,27 +137,24 @@ def call_gemini(prompt: str) -> str:
     try:
         api_key = st.secrets["gemini"]["api_key"]
         
-        # 尝试使用 gemini-pro，这是最不容易报错的名字
-        model_name = "gemini-pro" 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        # 1. 更新为 2026 年通用的模型名
+        model_name = "gemini-1.5-flash" 
+        
+        # 2. 使用 v1 稳定版路径，并加上 :generateContent 指令
+        url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={api_key}"
 
         headers = {"Content-Type": "application/json"}
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
-        
-        # 如果 gemini-pro 还是报 404，尝试换成 v1 路径
-        if resp.status_code == 404:
-            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}"
-            resp = requests.post(url, headers=headers, json=payload, timeout=30)
-
         data = resp.json()
+
         if "error" in data:
-            return f"AI暂时不可用: {data['error'].get('message')}"
+            return f"API 报错: {data['error'].get('message')}"
         
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        return f"连接AI失败: {e}"
+        return f"连接失败: {e}"
 
 def build_prompt(sid, info, lang):
     h         = info["history"]
