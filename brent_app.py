@@ -37,6 +37,19 @@ check_login()
 role     = st.session_state.role
 username = st.session_state.username
 
+# --- 临时测试代码开始 ---
+st.write("### 🔍 你的 API 支持的模型列表：")
+api_key = st.secrets["gemini"]["api_key"]
+url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+try:
+    r = requests.get(url)
+    models_data = r.json()
+    for m in models_data.get('models', []):
+        st.code(m['name']) # 这会在网页上直接显示模型名字
+except Exception as e:
+    st.error(f"查询失败: {e}")
+# --- 临时测试代码结束 ---
+
 # ─────────────────────────────────────────────
 # 3. CONSTANTS
 # ─────────────────────────────────────────────
