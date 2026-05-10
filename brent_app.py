@@ -140,7 +140,7 @@ def call_gemini(prompt: str) -> str:
         
         # 2. 关键修复：URL 必须指向具体的模型，并且以 :generateContent 结尾
         model_name = "gemini-1.5-flash"
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
 
         # 3. 设置 Headers 和 Payload
         headers = {"Content-Type": "application/json"}
