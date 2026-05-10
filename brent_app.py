@@ -136,28 +136,25 @@ def submit_pending(action, data):
 def call_gemini(prompt: str) -> str:
     try:
         api_key = st.secrets["gemini"]["api_key"]
-        # 使用 1.5 Flash 模型
-        # 将 v1beta 改为 v1
-        # 最稳定的通用版本，100% 能跑通
-        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+        # 1. 明确模型名称和正确的生成地址
+        model_name = "gemini-1.5-flash" 
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
-        response = requests.get(url)
-        models = response.json()
-
-        print("你的 API Key 支持以下模型：")
-        for model in models.get("models", []):
-            print(model["name"])
+        headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
-        resp = requests.post(url, json=payload, timeout=30)
+        
+        # 2. 直接发送 POST 请求
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
         data = resp.json()
 
-        # 显示完整错误信息帮助调试
         if "error" in data:
             return f"Gemini 错误：{data['error'].get('message', str(data['error']))}"
-        if "candidates" not in data:
-            return f"Gemini 返回异常：{json.dumps(data)}"
+        
+        # 3. 增加安全检查，防止 candidates 为空
+        if "candidates" not in data or not data["candidates"]:
+            return "AI 未能生成内容，请检查输入或 API 状态。"
 
         candidate = data["candidates"][0]
         if candidate.get("finishReason") == "SAFETY":
