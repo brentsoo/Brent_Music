@@ -137,7 +137,8 @@ def call_gemini(prompt: str) -> str:
     try:
         api_key = st.secrets["gemini"]["api_key"]
         # 使用 1.5 Flash 模型
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        # 将 v1beta 改为 v1
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
