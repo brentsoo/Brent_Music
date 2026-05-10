@@ -150,12 +150,13 @@ def call_gemini(prompt: str) -> str:
     try:
         api_key = st.secrets["gemini"]["api_key"]
         
-        # 尝试锁定具体版本号
-        model_name = "gemini-1.5-flash-001" 
-        # 或者 2026 年的新版
-        # model_name = "gemini-1.5-flash-latest"
-
+        # 1. 换成列表里排在第一位、最稳的 2.5 模型
+        # 注意：不需要带 "models/" 前缀，API 会自动补全
+        model_name = "gemini-2.5-flash" 
+        
+        # 2. 这里的版本号建议用 v1beta，因为它支持 2.5/3.1 的所有最新功能
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+
         headers = {"Content-Type": "application/json"}
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
@@ -165,6 +166,7 @@ def call_gemini(prompt: str) -> str:
         if "error" in data:
             return f"API 报错: {data['error'].get('message')}"
         
+        # 3. 提取结果（结构在 2.5 版本依然保持一致）
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         return f"连接失败: {e}"
