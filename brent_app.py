@@ -135,32 +135,43 @@ def submit_pending(action, data):
 # ─────────────────────────────────────────────
 def call_gemini(prompt: str) -> str:
     try:
+        # 1. 从 Secrets 获取 API Key
         api_key = st.secrets["gemini"]["api_key"]
-        # 1. 明确模型名称和正确的生成地址
-        model_name = "gemini-1.5-flash" 
+        
+        # 2. 锁定正确的模型和指令后缀 (必须带 :generateContent)
+        model_name = "gemini-1.5-flash"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
+        # 3. 设置标准的请求头
         headers = {"Content-Type": "application/json"}
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}]
-        }
         
-        # 2. 直接发送 POST 请求
+        # 4. 构建标准的 Payload
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }]
+        }
+
+        # 5. 发送 POST 请求 (注意是 POST)
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
         data = resp.json()
 
+        # 6. 错误拦截
         if "error" in data:
             return f"Gemini 错误：{data['error'].get('message', str(data['error']))}"
         
-        # 3. 增加安全检查，防止 candidates 为空
         if "candidates" not in data or not data["candidates"]:
-            return "AI 未能生成内容，请检查输入或 API 状态。"
+            return f"AI 返回异常，请检查 API 状态：{json.dumps(data)}"
 
         candidate = data["candidates"][0]
+        
+        # 安全过滤检查
         if candidate.get("finishReason") == "SAFETY":
             return "AI 内容被安全过滤，请修改提示词。"
 
+        # 7. 返回最终文本
         return candidate["content"]["parts"][0]["text"]
+
     except Exception as e:
         return f"AI 请求失败：{e}"
 
