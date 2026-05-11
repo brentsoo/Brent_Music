@@ -396,6 +396,16 @@ elif menu == "补课安排":
                     if rep_type == "Fully Replace":
                         students_db[sid]["history"][selection]["replaced"] = True
                         students_db[sid]["replacement_credits"] -= 1
+                    else:
+                        # Part Replace: update the remaining minutes on the original record
+                        orig_minutes = history[selection].get('cancel_minutes', 0)
+                        remaining = orig_minutes - rep_minutes
+                        if remaining <= 0:
+                            students_db[sid]["history"][selection]["replaced"] = True
+                            students_db[sid]["replacement_credits"] -= 1
+                            students_db[sid]["history"][selection]["cancel_minutes"] = 0
+                        else:
+                            students_db[sid]["history"][selection]["cancel_minutes"] = remaining
                         students_db[sid]["replacement_minutes"] = max(
                             0, students_db[sid].get("replacement_minutes", 0) - orig_minutes
                         )
