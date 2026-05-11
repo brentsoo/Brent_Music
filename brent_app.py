@@ -338,11 +338,10 @@ elif menu == "考勤登记":
             remarks  = st.text_area("今日学习进度/评语")
 
             # Show makeup minutes field only for cancelled
-            cancel_minutes = 0
-            if status_option in ["Cancelled (Student)", "Cancelled (Teacher)"]:
-                cancel_minutes = st.number_input(
-                    "需补课时长（分钟）", min_value=15, max_value=180, value=60, step=15
-                )
+            cancel_minutes = st.number_input(
+                "需补课时长（分钟）", min_value=0, max_value=180, value=60, step=15,
+                help="仅在 Cancelled 时有效"
+            )
 
             if st.form_submit_button("💾 保存考勤记录"):
                 if "Cancelled" in status_option:
@@ -387,11 +386,10 @@ elif menu == "补课安排":
                 rep_type    = st.radio("补课类型", ["Fully Replace","Part Replace"], horizontal=True)
                 rep_date    = st.date_input("补课日期")
                 rep_time    = st.time_input("补课上课时间")
-                rep_minutes = 0
-                if rep_type == "Part Replace":
-                    rep_minutes = st.number_input(
-                        "本次补课时长（分钟）", min_value=15, max_value=180, value=30, step=15
-                    )
+                rep_minutes = st.number_input(
+                    "本次补课时长（分钟）", min_value=15, max_value=180, value=30, step=15,
+                    help="Fully Replace 时自动使用原欠课时长"
+                )
                 rep_remarks = st.text_area("补课进度")
                 if st.form_submit_button("确认补课"):
                     orig_minutes = history[selection].get('cancel_minutes', 0)
@@ -438,8 +436,17 @@ elif menu == "报告查询":
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("乐器", info['instrument'])
         m2.metric("等级", info['grade'])
-        m3.metric("待补课次数", info['replacement_credits'])
-        m4.metric("待补课时长", f"{info.get('replacement_minutes',0)} min")
+        # Recalculate from history to ensure accuracy
+        pending_min = sum(
+            h.get('cancel_minutes', 0) for h in info['history']
+            if "Cancelled" in h.get('status','') and not h.get('replaced')
+        )
+        pending_count = sum(
+            1 for h in info['history']
+            if "Cancelled" in h.get('status','') and not h.get('replaced')
+        )
+        m3.metric("待补课次数", pending_count)
+        m4.metric("待补课时长", f"{pending_min} min")
 
         if info.get('phone') or info.get('email'):
             st.write(f"📞 {info.get('phone','')}　✉️ {info.get('email','')}")
@@ -597,12 +604,20 @@ elif menu == "报表中心":
     rows = []
     for s, i in students_db.items():
         if i['replacement_credits'] > 0 or i.get('replacement_minutes', 0) > 0:
+            pending_min = sum(
+                h.get('cancel_minutes', 0) for h in i['history']
+                if "Cancelled" in h.get('status','') and not h.get('replaced')
+            )
+            pending_count = sum(
+                1 for h in i['history']
+                if "Cancelled" in h.get('status','') and not h.get('replaced')
+            )
             rows.append({
                 "学生ID":    s,
                 "姓名":      i['name'],
                 "乐器":      i['instrument'],
-                "待补课次数": i['replacement_credits'],
-                "待补课时长(min)": i.get('replacement_minutes', 0),
+                "待补课次数": pending_count,
+                "待补课时长(min)": pending_min,
             })
     if rows:
         df_p = pd.DataFrame(rows).sort_values("待补课次数", ascending=False)
@@ -787,9 +802,7 @@ elif menu == "📝 To Do List":
                     st.write(f"☐ {t['task']}  \n<small style='color:gray'>by {t['created_by']} · {t['timestamp']}</small>", unsafe_allow_html=True)
                 with col2:
                     if st.button("✅", key=f"done_{t['id']}"):
-                        for item in todos:
-                            if item['id'] == t['id']:
-                                item['done'] = True
+                        todos = [x for x in todos if x['id'] != t['id']]
                         save_todos(todos)
                         st.rerun()
 
