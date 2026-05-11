@@ -396,9 +396,10 @@ elif menu == "补课安排":
                     if rep_type == "Fully Replace":
                         students_db[sid]["history"][selection]["replaced"] = True
                         students_db[sid]["replacement_credits"] -= 1
+                        students_db[sid]["history"][selection]["cancel_minutes"] = 0
+                        status_label = "Fully Replaced"
+                        done_min = orig_minutes
                     else:
-                        # Part Replace: update the remaining minutes on the original record
-                        orig_minutes = history[selection].get('cancel_minutes', 0)
                         remaining = orig_minutes - rep_minutes
                         if remaining <= 0:
                             students_db[sid]["history"][selection]["replaced"] = True
@@ -406,24 +407,13 @@ elif menu == "补课安排":
                             students_db[sid]["history"][selection]["cancel_minutes"] = 0
                         else:
                             students_db[sid]["history"][selection]["cancel_minutes"] = remaining
-                        students_db[sid]["replacement_minutes"] = max(
-                            0, students_db[sid].get("replacement_minutes", 0) - orig_minutes
-                        )
-                        status_label = "Fully Replaced"
-                        done_min     = orig_minutes
-                    else:
-                        # Part replace: deduct only partial minutes
-                        students_db[sid]["replacement_minutes"] = max(
-                            0, students_db[sid].get("replacement_minutes", 0) - rep_minutes
-                        )
                         status_label = "Part Replaced"
-                        done_min     = rep_minutes
-
+                        done_min = rep_minutes
                     students_db[sid]["history"].append({
-                        "date":           str(rep_date),
-                        "status":         status_label,
-                        "remarks":        f"[{rep_time.strftime('%H:%M')}] {rep_remarks}",
-                        "replaced":       True,
+                        "date": str(rep_date),
+                        "status": status_label,
+                        "remarks": f"[{rep_time.strftime('%H:%M')}] {rep_remarks}",
+                        "replaced": True,
                         "cancel_minutes": done_min,
                     })
                     save_data(students_db)
