@@ -406,7 +406,7 @@ elif menu == "补课安排":
                             students_db[sid]["replacement_credits"] -= 1
                             students_db[sid]["history"][selection]["cancel_minutes"] = 0
                         else:
-                            students_db[sid]["history"][selection]["cancel_minutes"] = remaining
+                            students_db[sid]["history"][selection]["cancel_minutes"] = int(remaining)
                         status_label = "Part Replaced"
                         done_min = rep_minutes
                     students_db[sid]["history"].append({
